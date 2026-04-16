@@ -1,27 +1,37 @@
+let offSet = 0;
+
 function setup() {
-    createCanvas(400, 700);
-    textSize(16);
+  createCanvas(400, 700);
+  textSize(16);
 }
 
 function draw() {
-    background(200);
-    let bannerNumber = 0;
-
+  background(200);
+  let bannerNumber = 0;
+  
 for(let y = 0; y < height; y+=50) {
- 
-    if (bannerNumber % 2 === 0) {
+  
+  if (bannerNumber % 2 === 0) {
     fill(255, 0, 0);
-    }
-    else {
+  }
+   else {
     fill(0, 0, 255);
-    }
- 
-    rect(0, y, width, 50);
-    fill(0);
-    bannerNumber++;  
+  }
+   
+rect(0, y, width, 50);
+fill(0);
 
-    for(let x = 0; x <width; x +=80){
-        text("● CHAOS", x, y + 30);
-        }
+bannerNumber++;  
+
+
+for(let x = 0; x <width; x +=77){
+    text("● CHAOS", x + offSet - 77, y + 30);
     }  
+  }  
+
+  offSet +=1
+  
+  if (offSet > 77){
+    offSet = 0;
+  }
 }
