@@ -7,31 +7,46 @@ function setup() {
 
 function draw() {
   background(200);
+  textStyle(BOLD);
+  textSize(12);
+  
   let bannerNumber = 0;
-  
+  let word = "●   CHAOS   ";
+  let wordWidth = textWidth(word);  
+
 for(let y = 0; y < height; y+=50) {
+ 
   
-  if (bannerNumber % 2 === 0) {
-    fill(255, 0, 0);
+if (bannerNumber % 2 === 0) {
+    fill(254, 108, 248);
   }
    else {
-    fill(0, 0, 255);
+    fill(255);
   }
    
 rect(0, y, width, 50);
-fill(0);
+fill(254,0,0);
 
-bannerNumber++;  
-
-
-for(let x = 0; x <width; x +=77){
-    text("● CHAOS", x + offSet - 77, y + 30);
-    }  
-  }  
-
-  offSet +=1
   
-  if (offSet > 77){
+
+
+for(let x = 0; x <width; x += wordWidth){
+   
+if(bannerNumber %2 === 0){
+  text(word, x + offSet, y + 30);
+  text(word, x + offSet - wordWidth, y + 30);
+    } else {
+  text(word, x - offSet, y + 30);   
+  text(word, x - offSet + wordWidth, y + 30);
+    }
+  }
+bannerNumber++;  
+}  
+ 
+
+offSet += 1
+
+if (offSet > wordWidth){
     offSet = 0;
   }
 }
