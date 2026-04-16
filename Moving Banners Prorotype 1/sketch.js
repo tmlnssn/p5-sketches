@@ -1,23 +1,27 @@
 function setup() {
-  createCanvas(400, 700);
+    createCanvas(400, 700);
+    textSize(16);
 }
 
 function draw() {
-  background(200);
-  let bannerNumber = 0;
+    background(200);
+    let bannerNumber = 0;
 
 for(let y = 0; y < height; y+=50) {
  
-  
-if (bannerNumber % 2 === 0) {
-  fill(255, 0, 0);
-}
- else {
-  fill(0, 0, 255);
-}
-  rect(0, y, width, 50);
-  
-  bannerNumber++;
-}
-  
+    if (bannerNumber % 2 === 0) {
+    fill(255, 0, 0);
+    }
+    else {
+    fill(0, 0, 255);
+    }
+ 
+    rect(0, y, width, 50);
+    fill(0);
+    bannerNumber++;  
+
+    for(let x = 0; x <width; x +=80){
+        text("● CHAOS", x, y + 30);
+        }
+    }  
 }
