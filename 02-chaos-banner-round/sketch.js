@@ -86,19 +86,19 @@ function draw() {
   drawScrollingText(0, 70, 70, 930, "DOPAMINE", "vertical", -1, color(0), sx, sy);
 
   drawScrollingText(70, 70, 490, 70, "PING", "horizontal", 1, color(255), sx, sy);
-  drawScrollingText(560, 70, 70, 790, "STRESS", "vertical", 1, color(0), sx, sy);
-  drawScrollingText(140, 860, 490, 70, "OVERPRIKKELD", "horizontal", -1, color(0), sx, sy);
+  drawScrollingText(560, 70, 70, 790, "RUSH", "vertical", 1, color(0), sx, sy);
+  drawScrollingText(140, 860, 490, 70, "GLITCH", "horizontal", -1, color(0), sx, sy);
   drawScrollingText(70, 140, 70, 790, "LIKES", "vertical", -1, color(255), sx, sy);
 
-  drawScrollingText(140, 140, 350, 70, "#", "horizontal", 1, color(0), sx, sy);
+  drawScrollingText(140, 140, 350, 70, "SWIPE", "horizontal", 1, color(0), sx, sy);
   drawScrollingText(490, 140, 70, 650, "CLICK", "vertical", 1, color(0), sx, sy);
   drawScrollingText(210, 790, 350, 70, "SPAM", "horizontal", -1, color(255), sx, sy);
-  drawScrollingText(140, 210, 70, 650, "DOOMSCROLL", "vertical", -1, color(255), sx, sy);
+  drawScrollingText(140, 210, 70, 650, "ERROR", "vertical", -1, color(255), sx, sy);
 
   drawScrollingText(210, 210, 210, 70, "TRIGGER", "horizontal", 1, color(255), sx, sy);
-  drawScrollingText(420, 210, 70, 510, "NOISE", "vertical", 1, color(255), sx, sy);
-  drawScrollingText(280, 720, 210, 70, "@  <3", "horizontal", -1, color(0), sx, sy);
-  drawScrollingText(210, 280, 70, 510, "BLOKKEREN", "vertical", -1, color(0), sx, sy);
+  drawScrollingText(420, 210, 70, 510, "ALERT", "vertical", 1, color(255), sx, sy);
+  drawScrollingText(280, 720, 210, 70, "@   #", "horizontal", -1, color(0), sx, sy);
+  drawScrollingText(210, 280, 70, 510, "FOMO", "vertical", -1, color(0), sx, sy);
 }
 
 function drawScrollingText(x, y, w, h, word, orientation, direction, txtColor, sx, sy) {
