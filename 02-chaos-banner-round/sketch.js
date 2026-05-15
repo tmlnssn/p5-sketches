@@ -26,7 +26,7 @@ function draw() {
   }
 
   // achtergrond
-  fill(220);
+  fill(50);
   rect(0, 0, width, height);
 
   // RAND 1
@@ -70,14 +70,14 @@ function draw() {
   sRect(210, 280, 70, 510);      
 
   // MIDDEN - blauw flikkert
-  let flickerAlpha = map(sin(frameCount * 0.8), -1, 1, 40, 180);
+//   let flickerAlpha = map(sin(frameCount * 0.8), -1, 1, 40, 180);
 
-  if (frameCount % 12 === 0) {
-    flickerAlpha = 255;
-  }
+//   if (frameCount % 12 === 0) {
+//     flickerAlpha = 255;
+//   }
 
-  fill(0, 0, 255, flickerAlpha);
-  sRect(280, 280, 140, 440);
+//   fill(0, 0, 255, flickerAlpha);
+//   sRect(280, 280, 140, 440);
 
   // TEKST IN DE BALKEN
   drawScrollingText(0, 0, 630, 70, "CHAOS", "horizontal", 1, color(0), sx, sy);
