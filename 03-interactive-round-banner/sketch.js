@@ -1,9 +1,13 @@
 // ─── INSTELLINGEN ─────────────────────────────────────────────────────────────
 let speed = 1;
 let targetSpeed = 1;
+let currentSpeedZone = 0;
 
 const MIN_SPEED = 0.5;
 const MAX_SPEED = 18;
+const SPEED_ZONE_BOUNDARIES = [0.18, 0.24, 0.3, 0.36];
+const SPEED_ZONE_VALUES = [MIN_SPEED, 4, 8, 12, MAX_SPEED];
+const ZONE_HYSTERESIS = 0.015;
 
 const BASE_W = 700;
 const BASE_H = 1000;
@@ -29,6 +33,24 @@ let restoreQueue = [];
 let lastExplodeTime = 0;
 let lastRestoreTime = 0;
 const BAR_INTERVAL = 380;
+
+function getTargetSpeedFromFaceSize(faceSize) {
+  while (
+    currentSpeedZone < SPEED_ZONE_BOUNDARIES.length &&
+    faceSize > SPEED_ZONE_BOUNDARIES[currentSpeedZone] + ZONE_HYSTERESIS
+  ) {
+    currentSpeedZone++;
+  }
+
+  while (
+    currentSpeedZone > 0 &&
+    faceSize < SPEED_ZONE_BOUNDARIES[currentSpeedZone - 1] - ZONE_HYSTERESIS
+  ) {
+    currentSpeedZone--;
+  }
+
+  return SPEED_ZONE_VALUES[currentSpeedZone];
+}
 
 function initBars() {
   bars = [
@@ -125,9 +147,10 @@ function draw() {
 
   // Snelheid
   if (isBlocked) {
+    currentSpeedZone = 0;
     targetSpeed = MIN_SPEED;
   } else {
-    targetSpeed = map(smoothFaceSize, 0.1, 0.6, MIN_SPEED, MAX_SPEED, true);
+    targetSpeed = getTargetSpeedFromFaceSize(smoothFaceSize);
   }
   speed = lerp(speed, targetSpeed, 0.03);
 
