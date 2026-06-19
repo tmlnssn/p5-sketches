@@ -5,7 +5,7 @@ let currentSpeedZone = 0;
 
 const MIN_SPEED = 0.5;
 const MAX_SPEED = 18;
-const SPEED_ZONE_BOUNDARIES = [0.18, 0.24, 0.3, 0.36];
+const SPEED_ZONE_BOUNDARIES = [0.12, 0.14, 0.16, 0.2];
 const SPEED_ZONE_VALUES = [MIN_SPEED, 4, 8, 12, MAX_SPEED];
 const ZONE_HYSTERESIS = 0.015;
 
@@ -152,7 +152,7 @@ function draw() {
   } else {
     targetSpeed = getTargetSpeedFromFaceSize(smoothFaceSize);
   }
-  speed = lerp(speed, targetSpeed, 0.03);
+  speed = lerp(speed, targetSpeed, 0.08);
 
   let sx = width / BASE_W;
   let sy = height / BASE_H;
