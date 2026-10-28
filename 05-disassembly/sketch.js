@@ -43,6 +43,13 @@ let faceSince = null;       // when the current face was first seen
 let lastFaceAt = -Infinity; // last time a face was seen
 let forceStanding = false;  // SPACE override
 
+// uitsnede op ogen / mond
+const FEATURES = ['eye', 'eyes', 'mouth'];
+const FOCUS_PADDING = 1.6;
+const FOCUS_SMOOTH = 0.25;
+let currentFeature = 'mouth';
+let focusBox = { x: GRAY_RES / 2, y: GRAY_RES / 2, size: GRAY_RES / RED_ZOOM };
+
 function preload() {
   if (typeof ml5 !== 'undefined') {
     faceMesh = ml5.faceMesh({ maxFaces: 1, flipped: false });
@@ -70,7 +77,6 @@ function setup() {
   sizeCanvas(true);
   reroll();
 
-  if (faceMesh) faceMesh.detectStart(video, (results) => { faces = results; });
 }
 
 function draw() {
@@ -84,6 +90,7 @@ function draw() {
   try {
     updateGray();
     updatePresence();
+    updateFocus();
     if (millis() > nextChange) reroll();
 
     if (standing) {
@@ -171,6 +178,7 @@ function updateGray() {
   if (!camBuf) {
     const a = video.elt.videoWidth / video.elt.videoHeight;
     camBuf = createGraphics(round(GRAY_RES * max(a, 1)), round(GRAY_RES / min(a, 1)));
+    if (faceMesh) faceMesh.detectStart(camBuf.elt, (results) => { faces = results; });
   }
   camBuf.image(video, 0, 0, camBuf.width, camBuf.height);
 
@@ -190,6 +198,7 @@ function updateGray() {
 
 function reroll() {
   buildLayout();
+  currentFeature = random(FEATURES);
   idleSize = max(8, round(u / random([4, 5, 6, 8])));
   rebuildIdleBuffers();
   nextChange = millis() + random(HOLD_TIMES);
@@ -263,28 +272,25 @@ function addCell(x, y, s) {
 // ---------- drawing ----------
 
 function drawCell(c) {
-  const sw = GRAY_RES / c.zoom;
-  const sx = c.fx * (GRAY_RES - sw);
-  const sy = c.fy * (GRAY_RES - sw);
+  const f = focusCrop(c.zoom);
   const s = c.s - GAP;
 
   push();
   if (c.flip) {
     translate(c.x, c.y + c.s);
     scale(1, -1);
-    image(grayBuf, GAP / 2, GAP / 2, s, s, sx, sy, sw, sw);
+    image(grayBuf, GAP / 2, GAP / 2, s, s, f.x, f.y, f.s, f.s);
   } else {
-    image(grayBuf, c.x + GAP / 2, c.y + GAP / 2, s, s, sx, sy, sw, sw);
+    image(grayBuf, c.x + GAP / 2, c.y + GAP / 2, s, s, f.x, f.y, f.s, f.s);
   }
   pop();
 }
 
 function drawRedSquare() {
-  const sw = GRAY_RES / RED_ZOOM;
-  const sx = (GRAY_RES - sw) / 2;
+  const f = focusCrop(1);
 
   redBuf.blendMode(BLEND);
-  redBuf.image(grayBuf, 0, 0, RED_RES, RED_RES, sx, sx, sw, sw);
+  redBuf.image(grayBuf, 0, 0, RED_RES, RED_RES, f.x, f.y, f.s, f.s);
   redBuf.blendMode(MULTIPLY);           // grayscale × red = black-to-red
   redBuf.fill(255, 30, 25);
   redBuf.rect(0, 0, RED_RES, RED_RES);
@@ -353,4 +359,45 @@ function keyPressed() {
   if (key === 'l' || key === 'L') showLed = !showLed;
   if (key === 'd' || key === 'D') showDebug = !showDebug;
   return false;
+}
+
+function updateFocus() {
+  let target = { x: GRAY_RES / 2, y: GRAY_RES / 2, size: GRAY_RES / RED_ZOOM };
+  if (faces.length > 0 && camBuf) {
+    const face = faces[0];
+    let part = null;
+    if (currentFeature === 'mouth') part = face.lips;
+    else if (currentFeature === 'eye') part = face.leftEye;
+    else part = bothEyes(face);
+    if (part) target = toGray(part);
+  }
+  focusBox.x = lerp(focusBox.x, target.x, FOCUS_SMOOTH);
+  focusBox.y = lerp(focusBox.y, target.y, FOCUS_SMOOTH);
+  focusBox.size = lerp(focusBox.size, target.size, FOCUS_SMOOTH);
+}
+
+function bothEyes(face) {
+  const a = face.leftEye, b = face.rightEye;
+  if (!a || !b) return null;
+  const x = min(a.x, b.x), y = min(a.y, b.y);
+  const x2 = max(a.x + a.width, b.x + b.width), y2 = max(a.y + a.height, b.y + b.height);
+  return { x, y, width: x2 - x, height: y2 - y };
+}
+
+function toGray(part) {
+  const side = min(camBuf.width, camBuf.height);
+  const sx = (camBuf.width - side) / 2;
+  const sy = (camBuf.height - side) / 2;
+  const k = GRAY_RES / side;
+  const cx = part.x + part.width / 2;
+  const cy = part.y + part.height / 2;
+  const size = constrain(max(part.width, part.height) * FOCUS_PADDING * k, 24, GRAY_RES);
+  return { x: GRAY_RES - (cx - sx) * k, y: (cy - sy) * k, size };
+}
+
+function focusCrop(zoom) {
+  const s = constrain(focusBox.size / zoom, 8, GRAY_RES);
+  const x = constrain(focusBox.x - s / 2, 0, GRAY_RES - s);
+  const y = constrain(focusBox.y - s / 2, 0, GRAY_RES - s);
+  return { x, y, s };
 }
