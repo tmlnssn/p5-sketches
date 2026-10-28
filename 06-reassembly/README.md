@@ -4,6 +4,8 @@ Een interactieve p5.js-sketch waarin je gezicht uit elkaar valt en je het zelf w
 
 De webcam trackt je gezicht en knipt het op in vier losse vakjes met live beeld: twee ogen, de neus en de mond. Die vakjes zweven rustig over het scherm, elk met een willekeurig formaat (à la Picasso). Met de muis sleep je ze weer naar elkaar toe. Laat je ze liggen, dan drijven ze na een paar seconden weer weg.
 
+Staan er twee mensen voor de camera, dan krijgt de tweede persoon ook vier vakjes. Alles komt door elkaar op één hoop: zoek uit welk oog van wie is, of bouw juist een gezicht met jouw oog en de mond van de ander.
+
 ## Starten
 
 1. Zet `index.html`, `sketch.js` en `style.css` samen in één map.
@@ -20,6 +22,8 @@ Werkt de camera niet? Controleer of de pagina via `localhost` of `127.0.0.1` ope
 | Loslaten | Vakje blijft liggen, en drijft na 8 seconden weer weg |
 | Wegkijken / uit beeld | Vakjes tonen TV-ruis en gaan weer zweven |
 | Terug in beeld | Nieuwe willekeurige formaten, vakjes verspreiden zich |
+| Tweede persoon in beeld | Vier extra vakjes faden in, door elkaar met de rest |
+| Tweede persoon weg | Zijn vakjes faden weer uit |
 | Spatiebalk | Stijl wisselen: zwart-wit → pixel → ASCII |
 
 ## Instellingen
@@ -36,6 +40,8 @@ Bovenaan `sketch.js` staat een `SETTINGS`-object. De belangrijkste waarden:
 | `PIXEL_SIZE` | 6 | Grootte van de pixels in pixelstijl |
 | `ASCII_CELL` | 11 | Grootte van de tekens in ASCII-stijl |
 | `CONTRAST` | 1.4 | Contrast van het zwart-witbeeld |
+| `MAX_FACES` | 2 | Hoeveel gezichten tegelijk getrackt worden |
+| `CROWD_SCALE` | 0.8 | Vakjes van een nieuwe persoon iets kleiner als er meerdere mensen zijn |
 
 ## Techniek
 
@@ -43,6 +49,7 @@ Bovenaan `sketch.js` staat een `SETTINGS`-object. De belangrijkste waarden:
 - Gezichtsdelen worden bepaald met MediaPipe FaceMesh-keypoints
 - Elk vakje heeft een eigen interne buffer; daaruit worden de drie stijlen getekend
 - Pixelstijl tekent als één scherp opgeschaald beeldje, zodat kleine pixels soepel blijven
+- Meerdere gezichten: elk gezicht krijgt een vast 'slot'. ml5 geeft gezichten niet altijd in dezelfde volgorde terug, dus per frame wordt elk gezicht gekoppeld aan het slot waarvan het vorige gezicht het dichtstbij zat. Zo houdt iedereen zijn eigen vakjes.
 
 ## Ideeën voor een volgende fase
 
@@ -66,7 +73,7 @@ De webcam trackt het gezicht van één persoon. Elk gezichtsonderdeel krijgt een
 - Losse bestanden: index.html, sketch.js, style.css
 - Draait lokaal via VS Code Live Server en moet werken in Safari op een Mac
 - Fullscreen canvas (windowWidth x windowHeight), past zich aan bij windowResized
-- Eén gezicht tegelijk (maxFaces: 1), webcambeeld gespiegeld
+- Meerdere gezichten tegelijk (maxFaces: 2, instelbaar), webcambeeld gespiegeld
 - De webcamvideo zelf is niet zichtbaar; alleen de vakjes zijn te zien
 - Geen extra frameworks, geen UI-knoppen, geen tekst in beeld
 
@@ -94,6 +101,13 @@ Linkeroog, rechteroog, neus, mond.
   1. na een aantal seconden (instelbaar, standaard 8 sec), OF
   2. zodra het gezicht uit beeld is / de tracking wegvalt
 - Laat dat wegdrijven vlot maar geleidelijk op gang komen, niet abrupt
+
+## Meerdere personen
+- Elke persoon krijgt zijn eigen 4 vakjes; alle vakjes zweven DOOR ELKAAR op één canvas
+- De gebruiker zoekt zelf uit welk onderdeel van wie is, of bouwt bewust een mix-gezicht
+- Koppel gezichten aan vaste slots op basis van de afstand tot de vorige positie, zodat vakjes niet van persoon wisselen als ml5 de volgorde van de gezichten verandert
+- De vakjes van persoon 1 zijn altijd zichtbaar (met ruis als er niemand is); die van extra personen faden in zodra ze in beeld komen en weer uit als ze weggaan
+- Bij meerdere personen worden nieuwe vakjes iets kleiner, zodat het canvas niet volloopt
 
 ## Geen gezicht
 - Als er langer dan ca. 0,5 sec geen gezicht wordt gedetecteerd: alle vakjes tonen TV-ruis (static) in plaats van camerabeeld, en zweven vrij rond

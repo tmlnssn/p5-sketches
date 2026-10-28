@@ -1,7 +1,8 @@
 // =====================================================================
 //  REASSEMBLY
 //  Een uit elkaar gehaald gezicht dat je zelf weer in elkaar puzzelt.
-//  p5.js + ml5 faceMesh — live webcam, 4 losse gezichtsdelen.
+//  p5.js + ml5 faceMesh — live webcam, 4 losse gezichtsdelen per persoon.
+//  Meerdere mensen tegelijk: alle vakjes komen door elkaar op één hoop.
 //
 //  Bediening:
 //    muis   — klik en sleep een vakje
@@ -38,6 +39,10 @@ const SETTINGS = {
   REST_TIME: 8000,          // ms dat een neergelegd vakje blijft liggen
 
   // Face tracking
+  MAX_FACES: 2,             // hoeveel gezichten tegelijk (meer = zwaarder)
+  CROWD_SCALE: 0.8,         // vakjes iets kleiner zodra er meerdere mensen zijn
+  FADE_SPEED: 0.08,         // hoe snel vakjes van een extra persoon in/uit beeld faden
+  MATCH_MS: 1000,           // binnen deze tijd herkent hij een gezicht als 'dezelfde persoon'
   FACE_LOST_MS: 500,        // ms zonder gezicht voordat de ruis verschijnt
   CROP_PADDING: 0.6,        // extra marge rond elk gezichtsdeel
   CROP_SMOOTHING: 0.25,     // 0..1 — lager = rustiger, maar trager
@@ -75,9 +80,9 @@ const PARTS = [
 // ---------------------------------------------------------------------
 let video;
 let faceMesh;
-let faces = [];
-let lastFaceTime = -Infinity;
-let faceWasVisible = false;
+// Eén 'slot' per persoon. Elk slot onthoudt waar zijn gezicht zat,
+// zodat iemand zijn eigen vakjes houdt, ook als ml5 de volgorde wisselt.
+let slots = [];
 
 let parts = [];
 let dragged = null;
@@ -89,7 +94,7 @@ let styleIndex = 0;
 //  SETUP
 // ---------------------------------------------------------------------
 function preload() {
-  faceMesh = ml5.faceMesh({ maxFaces: 1, refineLandmarks: false, flipped: false });
+  faceMesh = ml5.faceMesh({ maxFaces: SETTINGS.MAX_FACES, refineLandmarks: false, flipped: false });
 }
 
 function setup() {
@@ -109,13 +114,68 @@ function setup() {
 
   faceMesh.detectStart(video, gotFaces);
 
-  for (const p of PARTS) parts.push(new FacePart(p.name, p.indices));
+  for (let s = 0; s < SETTINGS.MAX_FACES; s++) {
+    slots.push({ face: null, center: null, lastSeen: -Infinity, visible: false, wasVisible: false });
+    for (const p of PARTS) parts.push(new FacePart(p.name, p.indices, s));
+  }
+  // Door elkaar husselen, zodat de tekenvolgorde niet per persoon gegroepeerd is
+  parts = shuffle(parts);
   dragOffset = createVector(0, 0);
 }
 
 function gotFaces(results) {
-  faces = results;
-  if (results.length > 0) lastFaceTime = millis();
+  assignFaces(results);
+}
+
+// Koppel de gevonden gezichten aan slots: elk gezicht gaat naar het slot
+// waarvan het vorige gezicht het dichtstbij zat. Nieuwe gezichten krijgen
+// een vrij slot (eerst slot 0).
+function assignFaces(results) {
+  const now = millis();
+  const centers = results.map(faceCenter);
+  const slotOf = new Array(results.length).fill(-1);
+  const taken = new Array(slots.length).fill(false);
+
+  // 1. Bekende gezichten: dichtstbijzijnde paren eerst
+  const pairs = [];
+  slots.forEach((slot, s) => {
+    if (!slot.center || now - slot.lastSeen > SETTINGS.MATCH_MS) return;
+    centers.forEach((c, f) => {
+      pairs.push({ s, f, d: dist(c.x, c.y, slot.center.x, slot.center.y) });
+    });
+  });
+  pairs.sort((a, b) => a.d - b.d);
+  for (const { s, f } of pairs) {
+    if (taken[s] || slotOf[f] !== -1) continue;
+    taken[s] = true;
+    slotOf[f] = s;
+  }
+
+  // 2. Nieuwe gezichten: eerste vrije slot
+  for (let f = 0; f < results.length; f++) {
+    if (slotOf[f] !== -1) continue;
+    const s = taken.indexOf(false);
+    if (s === -1) break;
+    taken[s] = true;
+    slotOf[f] = s;
+  }
+
+  // 3. Wegschrijven
+  for (const slot of slots) slot.face = null;
+  for (let f = 0; f < results.length; f++) {
+    const s = slotOf[f];
+    if (s === -1) continue;
+    slots[s].face = results[f];
+    slots[s].center = centers[f];
+    slots[s].lastSeen = now;
+  }
+}
+
+function faceCenter(face) {
+  const k = face.keypoints && face.keypoints[1]; // neuspunt
+  if (k) return { x: k.x, y: k.y };
+  const b = face.box;
+  return { x: b.xMin + b.width / 2, y: b.yMin + b.height / 2 };
 }
 
 
@@ -125,18 +185,21 @@ function gotFaces(results) {
 function draw() {
   background(0);
 
-  const faceVisible = millis() - lastFaceTime < SETTINGS.FACE_LOST_MS;
-
-  // Gezicht komt (opnieuw) in beeld → nieuwe Picasso-formaten + verspreiden
-  if (faceVisible && !faceWasVisible) onNewFace();
-  faceWasVisible = faceVisible;
-
-  const face = faces.length > 0 ? faces[0] : null;
+  const now = millis();
+  for (let s = 0; s < slots.length; s++) {
+    const slot = slots[s];
+    slot.visible = now - slot.lastSeen < SETTINGS.FACE_LOST_MS;
+    // Gezicht komt (opnieuw) in beeld → nieuwe Picasso-formaten + verspreiden
+    if (slot.visible && !slot.wasVisible) onNewFace(s);
+    slot.wasVisible = slot.visible;
+  }
 
   for (const p of parts) {
-    if (face) p.updateCrop(face);
-    p.capture(faceVisible);
-    p.update(faceVisible);
+    const slot = slots[p.slot];
+    if (slot.face) p.updateCrop(slot.face);
+    p.updateFade(p.slot === 0 || slot.visible || p === dragged);
+    if (p.alpha > 0.01) p.capture(slot.visible);
+    p.update(slot.visible);
   }
 
   separateParts();
@@ -146,9 +209,18 @@ function draw() {
   updateCursor();
 }
 
-function onNewFace() {
+function onNewFace(s) {
+  const crowd = slots.filter((sl) => sl.visible).length;
+  const scale = crowd > 1 ? SETTINGS.CROWD_SCALE : 1;
   for (const p of parts) {
-    p.targetSize = randomSize();
+    if (p.slot !== s) continue;
+    p.crop = null; // nieuwe persoon → uitsnede direct goed zetten, niet overglijden
+    p.targetSize = randomSize() * scale;
+    if (p.alpha < 0.05) {
+      // Was onzichtbaar: verschijn op een willekeurige plek, meteen op formaat
+      p.size = p.targetSize;
+      p.pos.set(random(p.size / 2, width - p.size / 2), random(p.size / 2, height - p.size / 2));
+    }
     if (p !== dragged) p.scatter();
   }
 }
@@ -158,9 +230,11 @@ function onNewFace() {
 //  FACEPART
 // ---------------------------------------------------------------------
 class FacePart {
-  constructor(name, indices) {
+  constructor(name, indices, slot) {
     this.name = name;
     this.indices = indices;
+    this.slot = slot;                 // bij welke persoon dit vakje hoort
+    this.alpha = slot === 0 ? 1 : 0;  // extra personen starten onzichtbaar
 
     this.size = randomSize();
     this.targetSize = this.size;
@@ -184,6 +258,10 @@ class FacePart {
     this.buf.pixelDensity(1);
     this.gray = new Float32Array(R * R);
     this.img = createImage(R, R);
+  }
+
+  updateFade(show) {
+    this.alpha = lerp(this.alpha, show ? 1 : 0, SETTINGS.FADE_SPEED);
   }
 
   // --- Face tracking -------------------------------------------------
@@ -298,11 +376,14 @@ class FacePart {
   }
 
   contains(x, y) {
+    if (this.alpha < 0.5) return false;
     return abs(x - this.pos.x) < this.size / 2 && abs(y - this.pos.y) < this.size / 2;
   }
 
   // --- Tekenen -------------------------------------------------------
   display(style) {
+    if (this.alpha < 0.01) return;
+    drawingContext.globalAlpha = this.alpha;
     const s = this.size;
     const x = this.pos.x - s / 2;
     const y = this.pos.y - s / 2;
@@ -319,6 +400,7 @@ class FacePart {
     stroke(255);
     strokeWeight(this.state === "dragging" ? 2.5 : 1.2);
     rect(x, y, s, s);
+    drawingContext.globalAlpha = 1;
   }
 
   drawGray(x, y, s) {
@@ -408,6 +490,7 @@ function separateParts() {
   for (let i = 0; i < parts.length; i++) {
     for (let j = i + 1; j < parts.length; j++) {
       const a = parts[i], b = parts[j];
+      if (a.alpha < 0.05 || b.alpha < 0.05) continue;
       const aFree = a.state === "floating";
       const bFree = b.state === "floating";
       if (!aFree && !bFree) continue;
