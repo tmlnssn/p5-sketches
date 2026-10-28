@@ -1,7 +1,7 @@
 // =====================================================================
 //  REASSEMBLY
 //  Een uit elkaar gehaald gezicht dat je zelf weer in elkaar puzzelt.
-//  p5.js + ml5 faceMesh — live webcam, 6 losse gezichtsdelen.
+//  p5.js + ml5 faceMesh — live webcam, 4 losse gezichtsdelen.
 //
 //  Bediening:
 //    muis   — klik en sleep een vakje
@@ -18,24 +18,24 @@ const SETTINGS = {
   VIDEO_H: 480,
 
   // Resolutie van de interne uitsnede per vakje (hoger = scherper, zwaarder)
-  BUFFER_RES: 96,
+  BUFFER_RES: 128,
 
   // Formaat van de vakjes (px, bij een scherm van ~900 px hoog; schaalt mee)
-  MIN_SIZE: 90,
-  MAX_SIZE: 260,
+  MIN_SIZE: 130,
+  MAX_SIZE: 340,
   SIZE_LERP: 0.08,          // hoe snel een vakje naar zijn nieuwe formaat groeit
 
   // Beweging
-  FLOAT_SPEED: 0.6,         // basissnelheid van het zweven
+  FLOAT_SPEED: 0.85,        // basissnelheid van het zweven
   NOISE_TIME: 0.00015,      // hoe snel de zweefrichting verandert
   STEER: 0.02,              // hoe soepel een vakje van richting wisselt
   EDGE_MARGIN: 60,          // afstand tot de rand waarop vakjes terugsturen
   SEPARATION: 0.02,         // hoe hard zwevende vakjes elkaar afstoten
   SCATTER_KICK: 3.5,        // duw bij een nieuw gezicht
-  DRIFT_RAMP: 0.006,        // hoe geleidelijk een neergelegd vakje weer op gang komt
+  DRIFT_RAMP: 0.012,        // hoe geleidelijk een neergelegd vakje weer op gang komt
 
   // Neerleggen en wegdrijven
-  REST_TIME: 15000,         // ms dat een neergelegd vakje blijft liggen
+  REST_TIME: 8000,          // ms dat een neergelegd vakje blijft liggen
 
   // Face tracking
   FACE_LOST_MS: 500,        // ms zonder gezicht voordat de ruis verschijnt
@@ -45,7 +45,7 @@ const SETTINGS = {
 
   // Stijl
   CONTRAST: 1.4,
-  PIXEL_SIZE: 12,           // grootte van één pixelblok op het scherm
+  PIXEL_SIZE: 6,            // grootte van één pixelblok op het scherm
   PIXEL_LEVELS: 5,          // aantal grijstinten in pixelstijl
   ASCII_CELL: 11,           // grootte van één ASCII-teken op het scherm
   ASCII_CHARS: " .:-=+*#%@",
@@ -63,10 +63,6 @@ const PARTS = [
     indices: [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466] },
   { name: "rechteroog",
     indices: [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246] },
-  { name: "linkerwenkbrauw",
-    indices: [276, 283, 282, 295, 285, 300, 293, 334, 296, 336] },
-  { name: "rechterwenkbrauw",
-    indices: [46, 53, 52, 65, 55, 70, 63, 105, 66, 107] },
   { name: "neus",
     indices: [1, 2, 4, 5, 19, 94, 98, 327, 64, 294, 48, 278, 195, 197] },
   { name: "mond",
@@ -341,17 +337,28 @@ class FacePart {
   }
 
   drawPixel(x, y, s) {
+    // Klein beeldje van n×n pixels, scherp (zonder vervaging) opgeschaald.
+    // Veel sneller dan losse rechthoeken, dus kleine pixels blijven soepel.
     const n = max(4, round(s / SETTINGS.PIXEL_SIZE));
-    const cell = s / n;
+    if (!this.pixImg || this.pixImg.width !== n) this.pixImg = createImage(n, n);
+    const img = this.pixImg;
     const L = SETTINGS.PIXEL_LEVELS - 1;
-    noStroke();
+    img.loadPixels();
     for (let gy = 0; gy < n; gy++) {
       for (let gx = 0; gx < n; gx++) {
         const v = applyContrast(this.sample(gx, gy, n));
-        fill(round((v / 255) * L) / L * 255);
-        rect(x + gx * cell, y + gy * cell, cell + 0.5, cell + 0.5);
+        const q = round((v / 255) * L) / L * 255;
+        const idx = (gy * n + gx) * 4;
+        img.pixels[idx] = q;
+        img.pixels[idx + 1] = q;
+        img.pixels[idx + 2] = q;
+        img.pixels[idx + 3] = 255;
       }
     }
+    img.updatePixels();
+    drawingContext.imageSmoothingEnabled = false;
+    image(img, x, y, s, s);
+    drawingContext.imageSmoothingEnabled = true;
   }
 
   drawAscii(x, y, s) {
